@@ -1,14 +1,31 @@
-import { useEffect, useState } from 'react'
-import './App.css'
+import React, { useEffect } from 'react';
+import FileExplorer from './Components/FileExplorer';
+import './App.css';
 import { WebContainer } from '@webcontainer/api';
-import FileTree from './Components/FileTree';
+import { useAtom } from 'jotai';
+import { activeTabAtom, fileTreeAtom, stepsAtom, urlAtom, webContainerAtom } from './store';
+
+// Define the Todo interface
+interface Todo {
+  id: number;
+  text: string;
+  completed: boolean;
+}
+
+// Define the file structure interface to match FileTree component
+interface FileContent {
+  contents: string;
+}
+
+interface FileNode {
+  file?: FileContent;
+  directory?: Record<string, FileNode>;
+}
 
 function App() {
+ 
+ // Here's the converted structure in the WebContainer format:
 
-  // Here's the converted structure in the WebContainer format:
-  const [url,setUrl]=useState("");
-  const [Steps,setSteps]=useState<string[]>([]);
-  const [filetree,setFiletree]=useState([]);
 const files = {
   "src": {
     "directory": {
@@ -74,124 +91,151 @@ const files = {
     }
   }
 };
-
-    function fileInit(){
-
-    }
-
-    function stepsInit(){
-      
-      let a: string[]=[];
-      for(let i=1;i<=10;i++){
-        a.push(`Step ${i}`);
-      }
-      setSteps(a);
-    }
-  // async function init(){
-  //   try {
-  //     console.log("booting.....");
-  //     const webcontainerInstance=await WebContainer.boot();
-  //     console.log("booted!",webcontainerInstance);
-  //     await webcontainerInstance.mount(files)
-  //     console.log("installinggggggggggggg........")
-  //     const installProcess=await webcontainerInstance.spawn('npm',['install', '&&' , 'npm' , 'run' , 'dev']);
-      
-  //     installProcess.output.pipeTo(new WritableStream({
-
-  //       write(data) {
   
-  //         console.log(data);
   
-  //       }
-        
-  //     }));
-  //     // console.log("STARTING DEVVVVVVVVVVVV!!!!")
-  //     // const process=await webcontainerInstance.spawn('npm', ['run','dev']);
-  //     // process.output.pipeTo(new WritableStream({
-
-  //     //   write(data) {
   
-  //     //     console.log(data);
   
-  //     //   }
-        
-  //     // }));
-  //     webcontainerInstance.on('server-ready', (port, url) => {
-  //       console.log(url)
-  //       setUrl(url);
-  //     })
-
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // }
-  async function init() {
-    try {
-      stepsInit();
-      fileInit();
-      console.log("Booting WebContainer...");
-      const webcontainerInstance = await WebContainer.boot();
-      console.log("WebContainer booted!", webcontainerInstance);
   
-      await webcontainerInstance.mount(files);
-      console.log("Files mounted.");
+    // Here's the converted structure in the WebContainer format:
+    const [webContainerInstance, setWebContainerInstance] = useAtom(webContainerAtom);
+    const [url, setUrl] = useAtom(urlAtom);
+    const [Steps, setSteps] = useAtom(stepsAtom);
+    const [filetree, setFiletree] = useAtom(fileTreeAtom);
+    const [activeTab, setActiveTab] = useAtom(activeTabAtom);
   
-      console.log("Installing dependencies...");
-      const installProcess = await webcontainerInstance.spawn('npm', ['install']);
   
-      installProcess.output.pipeTo(new WritableStream({
-        write(data) {
-          console.log(data);
-        }
-      }));
+      function fileInit(){
   
-      // Wait for the installation process to complete
-      const installExitCode = await installProcess.exit;
-      if (installExitCode !== 0) {
-        throw new Error(`npm install failed with exit code ${installExitCode}`);
       }
   
-      console.log("Starting development server...");
-      const devProcess = await webcontainerInstance.spawn('npm', ['run', 'dev']);
-  
-      devProcess.output.pipeTo(new WritableStream({
-        write(data) {
-          console.log(data);
+      function stepsInit(){
+        // Only initialize steps if they're not already set
+        if (Steps.length === 0) {
+          const dummySteps = [
+            "Create a new Vite app with React: npm create vite@latest my-todo-app -- --template react",
+            "Navigate to project directory: cd my-todo-app",
+            "Create components folder in src directory",
+            "Create TodoForm.jsx component",
+            "Create TodoItem.jsx component",
+            "Create TodoList.jsx component",
+            "Set up App.jsx with state management",
+            "Create main.jsx to render the app",
+            "Style your application with CSS",
+            "Install dependencies: npm install",
+            "Start the development server: npm run dev"
+          ];
+          setSteps(dummySteps);
         }
-      }));
-  
-      webcontainerInstance.on('server-ready', (port, url) => {
-        console.log(`Server is ready at ${url}`);
-        setUrl(url);
-      });
-  
-    } catch (error) {
-      console.error("An error occurred:", error);
+      }
+    
+    async function init() {
+      // Only initialize if the webContainer doesn't exist yet
+      if (webContainerInstance !== null) {
+        return;
+      }
+
+      try {
+        stepsInit();
+        fileInit();
+        console.log("Booting WebContainer...");
+        const instance = await WebContainer.boot();
+        console.log("WebContainer booted!", instance);
+        setWebContainerInstance(instance);
+    
+        await instance.mount(files);
+        console.log("Files mounted.");
+    
+        console.log("Installing dependencies...");
+        const installProcess = await instance.spawn('npm', ['install']);
+    
+        installProcess.output.pipeTo(new WritableStream({
+          write(data) {
+            console.log(data);
+          }
+        }));
+    
+        // Wait for the installation process to complete
+        const installExitCode = await installProcess.exit;
+        if (installExitCode !== 0) {
+          throw new Error(`npm install failed with exit code ${installExitCode}`);
+        }
+    
+        console.log("Starting development server...");
+        const devProcess = await instance.spawn('npm', ['run', 'dev']);
+    
+        devProcess.output.pipeTo(new WritableStream({
+          write(data) {
+            console.log(data);
+          }
+        }));
+    
+        instance.on('server-ready', (port, url) => {
+          console.log(`Server is ready at ${url}`);
+          setUrl(url);
+        });
+    
+      } catch (error) {
+        console.error("An error occurred:", error);
+      }
     }
+    
+      useEffect(()=>{
+        init();
+      },[webContainerInstance]) // Add webContainerInstance as a dependency
+    return (
+      <div className='w-full h-screen flex justify-around bg-gray-950'>
+        <button className='absolute top-0 right-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium p-5 h-10 w-20'>Deploy</button>
+        <div className='h-full w-1/4 border border-gray-700 rounded-lg text-amber-300 bg-gray-900 overflow-y-auto shadow-lg mb-10'>
+          <p className='text-center py-3 font-bold text-xl border-b border-gray-700'>Steps </p>
+          <div className='p-4 flex flex-col gap-10 mt-10'>
+            {
+              Steps.map((step, index) => (
+                <div key={index} className={`mb-20 flex items-start ${index === 0 ? 'mt-10' : ''}`}>
+                  <span className='flex items-center justify-center bg-green-500 text-white rounded-full w-6 h-6 mr-3 flex-shrink-0'>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                  <p className='text-white'>{step}</p>
+                </div>
+              ))
+            }
+
+            <div className={`flex items-center justify-center absolute bottom-0 left-0 ${activeTab === 'explorer' ? 'w-[550px]' : 'w-[290px]'} mx-auto`}>
+              <input type="text" placeholder='Enter your prompt' className='w-full p-2 h-10 rounded-md bg-gray-800 text-white border border-gray-700' />
+              <button className='bg-green-500 text-white px-4 py-2 rounded-md ml-2 p-5 h-10 w-20'>
+             
+              Send
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className='flex flex-col w-full h-full mx-5'>
+          <div className='flex mb-2 h-12'>
+            <button 
+              className={`px-4 py-2 rounded-t-lg font-medium ${activeTab === 'explorer' ? 'bg-gray-900 text-amber-300' : 'bg-gray-800 text-gray-400'}`}
+              onClick={() => setActiveTab('explorer')}
+            >
+              File Explorer
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-t-lg font-medium ${activeTab === 'preview' ? 'bg-gray-900 text-amber-300' : 'bg-gray-800 text-gray-400'}`}
+              onClick={() => setActiveTab('preview')}
+            >
+              Preview
+            </button>
+          </div>
+          {activeTab === 'explorer' ? (
+            <div className='w-full h-full border text-amber-300 bg-gray-900'>
+              <FileExplorer structure={files} />
+            </div>
+          ) : (
+            url ? 
+            <iframe className='w-full h-full border' src={url}/> : 
+            <p className='flex items-center justify-center text-white w-full h-full border bg-gray-900'>Loading preview...</p>
+          )}
+        </div>
+      </div>
+    ) 
   }
-  
-    useEffect(()=>{
-      // init();
-    },[])
-  return (
-    <div className='w-full h-screen flex justify-around bg-gray-950'>
-      <div className=' h-full w-1/4 border text-amber-300 bg-gray-900'>
-      <p className='text-center'>Steps</p>
-      <div>
-        {
-          Steps.map((steps,index)=>(
-            <ol key={index} className='text-white list-decimal'>{steps}</ol>
-          )
-            
-          )
-        }
-      </div>
-      
-      </div>
-      <div className='w-1/4 h-full border mx-5 text-amber-300 bg-gray-900'><FileTree structure={files} /></div>
-      {url?<iframe className='w-full h-full border' src={url}/>:<p className='text-white w-full h-full border '>loading.....</p>}
-    </div>
-  ) 
-}
-
-export default App
+  export default App;

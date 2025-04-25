@@ -1,39 +1,65 @@
-import React, { useState } from 'react';
-import { FolderOpen, Folder, FileText } from 'lucide-react';
+import React from 'react';
+import './FileTree.css';
 
-const FileTree = ({ structure, name = '', level = 0 }) => {
-  const [open, setOpen] = useState(level === 0);
+// Define interfaces for file structure
+interface FileContent {
+  contents: string;
+}
 
-  const isDirectory = structure?.directory !== undefined;
-  const isFile = structure?.file !== undefined;
-    console.log(structure,name,level)
-  const toggleOpen = () => {
-    if (isDirectory) setOpen(!open);
+interface FileNode {
+  file?: FileContent;
+  directory?: Record<string, FileNode>;
+}
+
+interface FileTreeProps {
+  structure: Record<string, FileNode>;
+  onFileSelect?: (fileName: string, content: string) => void;
+}
+
+// Helper component for rendering a single file/directory entry
+const FileTreeNode: React.FC<{
+  name: string;
+  node: FileNode;
+  depth: number;
+  path: string;
+  onFileSelect?: (fileName: string, content: string) => void;
+}> = ({ name, node, depth, path, onFileSelect }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const isDirectory = !!node.directory;
+  const fullPath = path ? `${path}/${name}` : name;
+  
+  const handleClick = () => {
+    if (isDirectory) {
+      setIsOpen(!isOpen);
+    } else if (node.file && onFileSelect) {
+      onFileSelect(fullPath, node.file.contents);
+    }
   };
 
   return (
-    <div className={`ml-${level * 4}`}>
-      <div
-        onClick={toggleOpen}
-        className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-100 cursor-pointer transition ${
-          isDirectory ? 'font-semibold' : 'text-gray-700'
-        }`}
+    <div className="file-node bg-gray-900" style={{ marginLeft: `${depth * 16}px` }}>
+      <div 
+        className={`file-node-name ${isDirectory ? 'directory' : 'file'}`}
+        onClick={handleClick}
       >
         {isDirectory ? (
-          open ? <FolderOpen size={16} /> : <Folder size={16} />
+          <span className="directory-icon">{isOpen ? '📂' : '📁'}</span>
         ) : (
-          <FileText size={16} />
+          <span className="file-icon">📄</span>
         )}
-        <span>{name}</span>
+        <span className="node-label">{name}</span>
       </div>
-      {open && isDirectory && (
-        <div className="ml-4">
-          {Object.entries(structure.directory).map(([childName, child]) => (
-            <FileTree
+
+      {isDirectory && isOpen && (
+        <div className="directory-contents">
+          {Object.entries(node.directory!).map(([childName, childNode]) => (
+            <FileTreeNode
               key={childName}
               name={childName}
-              structure={child}
-              level={level + 1}
+              node={childNode}
+              depth={depth + 1}
+              path={fullPath}
+              onFileSelect={onFileSelect}
             />
           ))}
         </div>
@@ -42,4 +68,22 @@ const FileTree = ({ structure, name = '', level = 0 }) => {
   );
 };
 
-export default FileTree;
+// Main FileTree component
+const FileTree: React.FC<FileTreeProps> = ({ structure, onFileSelect }) => {
+  return (
+    <div className="file-tree">
+      {Object.entries(structure).map(([name, node]) => (
+        <FileTreeNode 
+          key={name} 
+          name={name} 
+          node={node} 
+          depth={0}
+          path=""
+          onFileSelect={onFileSelect}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default FileTree; 

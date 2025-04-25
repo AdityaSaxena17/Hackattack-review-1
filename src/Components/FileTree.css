@@ -1,0 +1,40 @@
+.file-tree {
+  /* background-color: #f5f5f5; */
+  border-radius: 4px;
+  padding: 10px;
+  font-family: 'Courier New', monospace;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.file-node {
+  margin: 2px 0;
+}
+
+.file-node-name {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+}
+
+.file-node-name:hover {
+  background-color: #044377;
+}
+
+.file-node-name.directory {
+  font-weight: bold;
+}
+
+.directory-icon, .file-icon {
+  margin-right: 6px;
+}
+
+.node-label {
+  font-size: 14px;
+}
+
+.directory-contents {
+  margin-left: 4px;
+} 
